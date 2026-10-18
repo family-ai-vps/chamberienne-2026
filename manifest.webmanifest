@@ -3,7 +3,7 @@
   "short_name": "Chambérienne",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#111111",
   "theme_color": "#ffdf00",
   "icons": [
