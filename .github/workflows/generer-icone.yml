@@ -1,0 +1,31 @@
+name: Generer icone iPhone
+on:
+  push:
+    paths:
+      - 'icone-chamberienne.svg'
+      - '.github/workflows/generer-icone.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  icon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generer PNG 180 et 512
+        run: |
+          python -m pip install --quiet cairosvg
+          python - <<'PY'
+          import cairosvg
+          for size, name in [(180,'apple-touch-icon.png'),(512,'icon-512.png')]:
+              cairosvg.svg2png(url='icone-chamberienne.svg',write_to=name,output_width=size,output_height=size)
+          PY
+      - name: Publier les icones
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apple-touch-icon.png icon-512.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Ajouter les icones iPhone Chambérienne"
+            git push
+          fi
