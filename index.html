@@ -138,7 +138,8 @@ function isOperationalVolunteer(p){
  // même si sa fiche ne correspond pas encore au registre nominatif.
  return !!p && !responsibleOf(p) && !p.missions.some(m=>normName(m.sector)==='RESPONSABLES');
 }
-function volunteerPeople(){return DATA.people.filter(p=>isOperationalVolunteer(p)&&p.missions.length)}
+function volunteerFamilyName(name){const parts=String(name||'').trim().split(/\s+/);return parts.length>1?parts.slice(1).join(' '):parts[0]||''}
+function volunteerPeople(){return DATA.people.filter(p=>isOperationalVolunteer(p)&&p.missions.length).sort((a,b)=>volunteerFamilyName(a.name).localeCompare(volunteerFamilyName(b.name),'fr',{sensitivity:'base'})||a.name.localeCompare(b.name,'fr',{sensitivity:'base'}))}
 function ensureVolunteerSelection(){let eligible=volunteerPeople();if(!eligible.some(p=>p.id===volunteerId))volunteerId=eligible.length?eligible[0].id:null}
 function sectorLeader(sector){return RESPONSIBLES.filter(r=>r.role==='responsable'&&r.sectors.includes(sector))}
 function leaderHeader(sector){let owners=sectorLeader(sector);return `<div class="leader-card"><strong>🟡 Responsable(s) — ${esc(sector)}</strong><div>${owners.length?owners.map(r=>esc(r.name)).join(' · '):'<span class="small">Non identifié dans le registre 2025</span>'}</div></div>`}
