@@ -3,7 +3,7 @@
 **Date : 19/10/2026.** Aucun système de synchronisation ni données réelles n'est déployé. Les choix ci-dessous sont à valider avant d'intégrer des personnes réelles.
 
 ## P0 — questions bloquantes
-1. **Source officielle Forms 2026** : lien exact du formulaire d'inscription bénévoles La Chambérienne 2026, onglet de réponses, propriétaire, accès, fréquence d'actualisation. Le fichier « Retours bénévoles La Chambérienne 2026 » repéré concerne la Nordic ; ne pas l'importer comme inscriptions.
+1. **Validation de la source Forms 2026** : source candidate trouvée : « Bénévolat Chambéry Triathlon 2026 (Responses) », onglet `Form Responses 1` (216 réponses nominatives horodatées au 19/10/2026). Confirmer qu'elle fait autorité pour La Chambérienne, ses règles d'actualisation et les champs importables. Elle contient notamment des **numéros de permis de conduire**, dates de naissance, emails et téléphones : exclure les numéros de permis de tout jeu d'essai applicatif. Le fichier « Retours bénévoles La Chambérienne 2026 » concerne la Nordic ; ne pas l'importer comme inscriptions.
 2. **Responsable de validation** : qui valide les bénévoles, les affectations, les horaires, les dérogations, et à quelle date fige-t-on la liste ?
 3. **Identité** : identifiant bénévole stable, gestion des homonymes, mineurs, changements de nom, absence de téléphone/email, doublons Forms ; ne pas dériver l'ID du numéro de ligne Forms.
 4. **Authentification et autorisations** : compte individuel ou code à usage limité ; liste des administrateurs, responsables par secteur, révocation et remplacement. Le simple sélecteur de rôle du MVP ne suffit pas.
@@ -24,7 +24,7 @@
 
 ## P2 — plan de simulation fonctionnelle
 - **Étape 1** : dupliquer le maître d'affectation et le fichier d'exploitation dans un espace de TEST restreint, sans toucher aux originaux.
-- **Étape 2** : connecter une **copie autorisée** des réponses Forms 2026 après validation de la source ; pseudonymiser les jeux utilisés pour tests publics. Ne pas injecter de PII dans GitHub Pages.
+- **Étape 2** : connecter une **copie privée autorisée** des réponses Forms 2026 après validation de la source ; minimiser les champs (jamais le permis), pseudonymiser les jeux utilisés pour tests publics. Ne pas injecter de PII dans GitHub Pages.
 - **Étape 3** : contrôles d'import : doublons, IDs, âge, disponibilités, postes, horaires, conflits, données manquantes et anomalies bloquantes.
 - **Étape 4** : API et base TEST ; connexion de 2 à 3 iPhones, comptes de rôles différents, droits testés côté serveur.
 - **Étape 5** : scénarios de bout en bout : accueil, prise de poste, absence/remplacement, demande renfort, incident, clôture, matériel (entrée/sortie), annonce, notification.
