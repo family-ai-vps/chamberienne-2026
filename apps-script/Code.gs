@@ -68,7 +68,7 @@ function snapshot_() {
       assignments.push({
         id:key_(sheet.getName())+'-'+(i+5),
         postId:key_(sheet.getName()),
-        volunteer:shortName_(full),
+        volunteer:/^Cyclo Bissy (?:10|[1-9])$/i.test(full) ? full.replace(/^cyclo bissy /i,'Cyclo Bissy ') : shortName_(full),
         schedule:String(r[4]||''),
         subpost:String(r[5]||'')
       });
