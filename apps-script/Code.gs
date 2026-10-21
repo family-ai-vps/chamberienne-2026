@@ -69,6 +69,7 @@ function snapshot_() {
         id:key_(sheet.getName())+'-'+(i+5),
         postId:key_(sheet.getName()),
         volunteer:/^Cyclo Bissy (?:10|[1-9])$/i.test(full) ? full.replace(/^cyclo bissy /i,'Cyclo Bissy ') : shortName_(full),
+        bissyPlaceholder:/\b(?:cyclo|bissy)\b/i.test(full),
         schedule:String(r[4]||''),
         subpost:String(r[5]||'')
       });
@@ -87,6 +88,7 @@ function snapshot_() {
   } else if (bissyRows.length) {
     console.warn('Cyclo Bissy : '+bissyRows.length+' emplacements non reconnus (10 attendus), aucune renumérotation automatique');
   }
+  assignments.forEach(a=>{delete a.bissyPlaceholder;});
   return {generatedAt:new Date().toISOString(),posts,assignments};
 }
 function shortName_(raw) {
