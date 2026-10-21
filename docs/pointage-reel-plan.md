@@ -46,3 +46,11 @@ Les noms complets, téléphones et e-mails des bénévoles ne sont pas enregistr
 - L'interface de simulation efface les pointages au rechargement, par conception.
 - Les compteurs d'identités abrégées ne prouvent pas l'unicité des personnes.
 - Vérifier les expressions régulières de détection Cyclo Bissy dans le code source avant une prochaine publication : la copie GitHub et le déploiement Apps Script doivent être synchronisés.
+
+## Validation du 21 octobre — homonymes
+Deux bénévoles différents peuvent porter le même libellé abrégé « Vincent M. » et avoir le même créneau et le même poste. **Ne jamais dédoublonner par nom abrégé, horaire ou poste.** Une affectation = une ligne source distincte, jusqu'à décision explicite sur les données. Les pointages sont associés à un identifiant d'affectation stable et non à l'identité affichée.
+
+## Contrôles avant implémentation
+- Vérifier l'expression régulière du bloc Cyclo Bissy dans Code.gs : elle comporte actuellement des doubles barres obliques dans un littéral regex et une condition utilisant le nom abrégé, ce qui doit être corrigé et testé avant toute nouvelle publication.
+- Ne pas activer doPost pour les pointages tant que l'authentification de l'opérateur n'est pas validée côté serveur.
+- L'onglet de journal de pointage doit être ajouté à RESERVED_TABS afin de ne jamais être interprété comme un onglet de poste.
