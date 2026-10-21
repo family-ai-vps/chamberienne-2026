@@ -1,0 +1,14 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chambérienne — test connecteur</title><style>body{font:16px system-ui;background:#121212;color:#f8f8f8;margin:20px}h1{font-size:23px}button{font-size:17px;padding:13px;border:0;border-radius:8px;background:#f2dc03;color:#111;font-weight:bold}section{background:#252525;padding:14px;border-radius:10px;margin:14px 0}small{color:#ccc}li{margin:9px 0}</style></head><body><h1>La Chambérienne 2026</h1><p>TEST — Lecture Google Sheets (prénom + initiale seulement)</p><button onclick="refresh()">Actualiser les données</button><p id="state">Prêt à tester</p><section id="stats"></section><section><h2>Postes</h2><ul id="posts"></ul></section><section><h2>Affectations abrégées</h2><ul id="assignments"></ul></section><script>
+const el=id=>document.getElementById(id);
+function safe(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function refresh(){
+ el('state').textContent='⏳ Lecture en cours…';
+ google.script.run.withSuccessHandler(data=>{
+   el('state').textContent='🟢 Données reçues : '+new Date(data.generatedAt).toLocaleString('fr-FR');
+   el('stats').textContent=data.posts.length+' postes — '+data.assignments.length+' affectations renseignées';
+   el('posts').innerHTML=data.posts.map(p=>'<li>'+safe(p.name)+' — '+safe(p.responsible)+'</li>').join('');
+   el('assignments').innerHTML=data.assignments.map(a=>'<li>'+safe(a.volunteer)+' — '+safe(a.postId)+' / '+safe(a.subpost)+' — <small>'+safe(a.schedule)+'</small></li>').join('');
+ }).withFailureHandler(err=>{el('state').textContent='🔴 Échec : '+String(err.message||err);}).testSnapshot();
+}
+refresh();
+</script></body></html>
