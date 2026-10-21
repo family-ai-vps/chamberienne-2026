@@ -2,8 +2,13 @@
 
 Cette branche prépare la connexion de la PWA aux Google Sheets. **Aucune donnée personnelle n'est publiée ici et la PWA de production reste inchangée.**
 
-## Sources vérifiées
-- Affectations par poste V3 : `19iMuuzR3dlmBzeUOkWzw-molwdE1Bg6QMyxUfB6iR6c` (onglets 01–48 et `05 - Responsables`).
+## Source de vérité actuelle (vérifiée le 21 octobre 2026)
+- **SOURCE PRIORITAIRE :** `TEST — La Chambérienne 2026 — Affectations bénévoles` — ID `1BdqBxZEfNFArV4CQ4a4aWUjYVHTPLCjML1_5fNNxdX0` ; onglets `Responsables 2026`, `Buvette`, `Gestion départs`, `Secteur A - Ville`, `Secteur D - Parcours`, etc. C'est le classeur activement retravaillé. Toute synchronisation PWA doit être basée sur ce classeur après validation de son schéma.
+- Exemple : Buvette **8 bénévoles hors responsable** (4 à 18h30–23h, 4 en relève 21h40–23h) ; secteur D **28 signaleurs hors responsable** ; gestion départs **8** ; secteur A - Ville **24**. Ne pas reprendre les chiffres antérieurs de V3 ou du prototype PWA.
+- **Interdiction d'utiliser V3 comme référentiel courant.**
+
+## Sources historiques / secondaires
+- **OBSOLÈTE pour la synchronisation** — Affectations par poste V3 : `19iMuuzR3dlmBzeUOkWzw-molwdE1Bg6QMyxUfB6iR6c` (onglets 01–48 et `05 - Responsables`).
 - Fichier maître historique : `1m8m03r9v7myckST0pNG88DpCOWp-oVcyjU8XByh3N0k`.
 - Exploitation course : `1GatqLXOZyNPTWnMq017h_eo2w2O76tYLPYSspUQpxcg`.
 
@@ -19,7 +24,7 @@ Cette branche prépare la connexion de la PWA aux Google Sheets. **Aucune donné
 Identifiants stables obligatoires ; les numéros de lignes Google Sheets ne sont pas des identifiants. Les droits sont vérifiés **sur le serveur**, pas dans l'interface. Un rôle sélectionné dans un menu n'est pas une authentification.
 
 ## Séquence de mise en service
-1. Valider la structure finale et les identifiants stables (lecture seule).
+1. Valider la structure finale du classeur TEST actif (`1BdqBxZEfNFArV4CQ4a4aWUjYVHTPLCjML1_5fNNxdX0`) et les identifiants stables (lecture seule).
 2. Créer un projet Apps Script privé et des copies Sheets de test, sans données sensibles.
 3. Mettre en place une authentification vérifiée côté serveur et la matrice des droits (bureau central / responsables multi-postes).
 4. Tester l'accès PWA GitHub Pages → Apps Script sur iPhone, notamment **CORS, redirections ContentService, sessions et expiration**. Ne pas considérer un simple `doGet` public comme une API sécurisée.
