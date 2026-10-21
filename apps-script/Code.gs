@@ -74,6 +74,19 @@ function snapshot_() {
       });
     });
   });
+  // Cyclo Bissy : dix emplacements fixes dans le secteur D, sous-postes D8 à D11.
+  // Ne pas modifier les noms des autres bénévoles ni les affectations source.
+  // Remplacer uniquement les identités non affichables sur ces emplacements.
+  const bissyRows=assignments.filter(a=>
+    a.postId===key_('Secteur D - Parcours') &&
+    /^D(?:8|9|10|11)(?![0-9])(?:\\b|\\s|\\.|$)/i.test(a.subpost) &&
+    !/^[^\\s]+(?:\\s+[^\\s]+)*\\s+[A-Za-zÀ-ÿ]\\.$/u.test(a.volunteer)
+  );
+  if (bissyRows.length===10) {
+    bissyRows.forEach((a,i)=>{a.volunteer='Cyclo Bissy '+(i+1);});
+  } else if (bissyRows.length) {
+    console.warn('Cyclo Bissy : '+bissyRows.length+' emplacements non reconnus (10 attendus), aucune renumérotation automatique');
+  }
   return {generatedAt:new Date().toISOString(),posts,assignments};
 }
 function shortName_(raw) {
