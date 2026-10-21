@@ -16,7 +16,7 @@ input{flex:2 1 210px}select{flex:1 1 180px}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat{background:white;border:1px solid #dbe4eb;border-radius:12px;padding:13px}.stat strong{font-size:1.7rem;display:block}.stat span{font-size:.8rem;color:#637687}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:10px}.card{border:1px solid #dce5eb;border-radius:10px;padding:13px}
 .card h3{font-size:1rem;margin:0 0 6px}.meta{color:#657788;font-size:.82rem}.assignment{border-top:1px solid #e9eff2;padding:9px 0;font-size:.9rem}
-.assignment b{display:block}.assignment span{display:block;color:#536b7d;margin-top:3px}
+.assignment b{display:block}.assignment span{display:block;color:#536b7d;margin-top:3px}.assignment button{font-size:.78rem;padding:6px 9px;margin-top:7px}.assignment button.checked{background:#277650;border-color:#277650}.subpost{background:#eef4f7;padding:7px 9px;border-radius:7px;margin:10px 0 3px;font-size:.83rem;font-weight:650}.simulation{background:#fff5db;border:1px solid #d6a33c;padding:12px;border-radius:9px;margin:12px 0}.simstats{font-size:.85rem;margin:6px 0;color:#37546a}
 .empty{text-align:center;padding:20px;color:#637687}footer{text-align:center;color:#6a7e8b;font-size:.78rem;padding:12px}
 @media(max-width:550px){main{padding:10px}.stats{gap:6px}.stat{padding:10px}.stat strong{font-size:1.3rem}section{padding:12px}}
 </style></head><body>
@@ -26,14 +26,14 @@ input{flex:2 1 210px}select{flex:1 1 180px}
 <div id="status" role="status">Chargement des données depuis Google Sheets…</div>
 <div class="stats"><div class="stat"><strong id="nPosts">—</strong><span>Postes</span></div><div class="stat"><strong id="nAssignments">—</strong><span>Affectations reçues</span></div><div class="stat"><strong id="nVolunteers">—</strong><span>Identités distinctes affichées</span></div></div><p id="audit" class="small muted"></p><section><details><summary>Diagnostic des identités masquées (sans noms complets)</summary><p class="small muted">Affiche uniquement le poste, le sous-poste, la catégorie du problème et un numéro de ligne dans la réponse. Aucun nom complet n’est transmis à ce diagnostic.</p><div id="diagnostic" class="small muted">Actualisez les données pour afficher le diagnostic.</div></details></section>
 <section><h2>Rechercher une affectation</h2><div class="bar"><input id="search" type="search" placeholder="Prénom, initiale, sous-poste, horaire…" aria-label="Rechercher"><select id="filter" aria-label="Filtrer par poste"><option value="">Tous les postes</option></select><button id="clear" type="button">Effacer</button></div><p id="matches" class="small muted"></p></section>
-<section><h2>Postes et affectations</h2><div id="cards" class="grid"><div class="empty">Chargement en cours…</div></div></section>
+<div class="simulation"><strong>SIMULATION DE POINTAGE — Aucun pointage réel enregistré</strong><p class="small">Les boutons de présence ci-dessous servent uniquement à tester l’interface. Les états sont conservés dans cette page jusqu’à son actualisation ou sa fermeture, sans écriture dans Google Sheets. « Non pointé » ne signifie pas « absent ».</p><div id="checkSummary" class="simstats">Aucun pointage simulé.</div><button id="resetChecks" type="button">Réinitialiser les pointages simulés</button></div><section><h2>Postes et affectations</h2><div id="cards" class="grid"><div class="empty">Chargement en cours…</div></div></section>
 <p class="small muted">Les affectations indiquent des prévisions d'organisation et ne constituent pas un pointage de présence. Les identités sont affichées au format prénom + initiale du nom.</p>
 </main><footer>Chambéry Triathlon · Connecteur TEST · Lecture seule</footer>
 <script>
 (function(){
 'use strict';
 const el=id=>document.getElementById(id);
-let posts=[],assignments=[],hiddenCount=0,unmatchedCount=0;
+let posts=[],assignments=[],hiddenCount=0,unmatchedCount=0;const checked=new Set();
 const str=v=>String(v==null?'':v).trim();
 const safeName=v=>{const s=str(v).replace(/\s+/g,' ');if(/^Cyclo Bissy (?:10|[1-9])$/i.test(s))return 'Cyclo Bissy '+s.match(/\d+$/)[0];return /^[^\s]+(?:\s+[^\s]+)*\s+[A-Za-zÀ-ÿ]\.$/u.test(s)?s:''};
 function node(tag,txt,cls){const x=document.createElement(tag);if(txt!==undefined)x.textContent=txt;if(cls)x.className=cls;return x}
@@ -41,6 +41,7 @@ function setStatus(message,cls){el('status').textContent=message;el('status').cl
 function render(){
 const query=el('search').value.trim().toLocaleLowerCase('fr'),filter=el('filter').value;
 const cards=el('cards');cards.replaceChildren();let count=0,shown=0;
+const checkedTotal=assignments.filter(a=>checked.has(a.id)).length;el('checkSummary').textContent=checkedTotal+' pointage(s) simulé(s) / '+assignments.length+' affectation(s) prévues · '+(assignments.length-checkedTotal)+' non pointée(s) (statut inconnu).';
 for(const p of posts){
 if(filter&&p.id!==filter)continue;
 const rows=assignments.filter(a=>a.postId===p.id&&(!query||[p.name,p.responsible,a.volunteer,a.subpost,a.schedule].join(' ').toLocaleLowerCase('fr').includes(query)));
@@ -49,7 +50,19 @@ shown++;count+=rows.length;
 const card=node('article',undefined,'card');card.append(node('h3',p.name));
 card.append(node('div','Responsable : '+(p.responsible||'Non renseigné'),'meta'));
 card.append(node('div',rows.length+' affectation(s) affichée(s)','meta'));
-for(const a of rows){const line=node('div',undefined,'assignment');line.append(node('b',a.volunteer||'Identité masquée'));line.append(node('span',[a.subpost,a.schedule].filter(Boolean).join(' · ')));card.append(line)}cards.append(card);
+const groups=new Map();for(const a of rows){const key=a.subpost||'Sans sous-poste';if(!groups.has(key))groups.set(key,[]);groups.get(key).push(a)}
+for(const [sub,items] of groups){
+const n=items.filter(a=>checked.has(a.id)).length;
+card.append(node('div',sub+' · '+items.length+' prévu(s) · '+n+' pointé(s) en simulation · '+(items.length-n)+' non pointé(s)','subpost'));
+for(const a of items){
+const line=node('div',undefined,'assignment');line.append(node('b',a.volunteer||'Identité masquée'));
+line.append(node('span',a.schedule||'Horaire non renseigné'));
+const btn=node('button',checked.has(a.id)?'✓ Présent (simulation)':'Marquer présent (simulation)',checked.has(a.id)?'checked':'');
+btn.type='button';btn.setAttribute('aria-pressed',String(checked.has(a.id)));
+btn.addEventListener('click',()=>{if(checked.has(a.id))checked.delete(a.id);else checked.add(a.id);render()});
+line.append(btn);card.append(line)
+}}
+cards.append(card);
 }
 if(!shown)cards.append(node('div',posts.length?'Aucun résultat.':'Aucune donnée disponible.','empty'));
 el('matches').textContent=shown+' poste(s) et '+count+' affectation(s) correspondant aux filtres.';
@@ -58,7 +71,7 @@ function diagnosis(value){const s=str(value).replace(/\s+/g,' ');if(!s)return 'I
 function accept(data){
 if(!data||!Array.isArray(data.posts)||!Array.isArray(data.assignments))throw Error('Structure de données inattendue');
 posts=data.posts.map(p=>({id:str(p.id),name:str(p.name),responsible:safeName(p.responsible)})).filter(p=>p.id&&p.name);
-assignments=data.assignments.map(a=>({postId:str(a.postId),volunteer:safeName(a.volunteer),subpost:str(a.subpost),schedule:str(a.schedule)}));
+checked.clear();assignments=data.assignments.map((a,i)=>({id:str(a.id)||'ligne-'+i,postId:str(a.postId),volunteer:safeName(a.volunteer),subpost:str(a.subpost),schedule:str(a.schedule)}));
 hiddenCount=assignments.filter(a=>!a.volunteer).length;
 const diagnostic=el('diagnostic');diagnostic.replaceChildren();
 const hidden=assignments.map((a,i)=>({a,i})).filter(x=>!x.a.volunteer);
@@ -79,6 +92,7 @@ google.script.run.withSuccessHandler(data=>{try{accept(data)}catch(e){setStatus(
 }
 el('refresh').addEventListener('click',refresh);el('search').addEventListener('input',render);el('filter').addEventListener('change',render);
 el('clear').addEventListener('click',()=>{el('search').value='';el('filter').value='';render()});
+el('resetChecks').addEventListener('click',()=>{checked.clear();render()});
 refresh();
 })();
 </script></body></html>
