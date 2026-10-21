@@ -19,7 +19,7 @@ const RESERVED_TABS = new Set([
  '_Sources contrôle','_Bénévoles contrôle','_Contrôles horaires','_Listes par mission'
 ]);
 
-function doGet(e) { return handle_({action:(e && e.parameter && e.parameter.action) || 'health'}); }
+function doGet(e) {\n  const action=(e && e.parameter && e.parameter.action) || '';\n  if (action === 'health') return json_({ok:true,service:'chamberienne-test',version:1});\n  return HtmlService.createHtmlOutputFromFile('Test').setTitle('Chambérienne 2026 — Connecteur TEST');\n}\nfunction testSnapshot() {\n  const props=PropertiesService.getScriptProperties();\n  if (props.getProperty('PUBLIC_TEST') !== 'true') throw new Error('Mode TEST non activé');\n  return snapshot_();\n}
 function doPost(e) {
   let req = {};
   try { req = JSON.parse(e.postData.contents); }
