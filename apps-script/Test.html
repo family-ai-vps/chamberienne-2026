@@ -24,7 +24,7 @@ input{flex:2 1 210px}select{flex:1 1 180px}
 <main>
 <div class="bar"><button id="refresh" type="button">↻ Actualiser les données</button><span id="updated" class="small muted"></span></div>
 <div id="status" role="status">Chargement des données depuis Google Sheets…</div>
-<div class="stats"><div class="stat"><strong id="nPosts">—</strong><span>Postes</span></div><div class="stat"><strong id="nAssignments">—</strong><span>Affectations reçues</span></div><div class="stat"><strong id="nVolunteers">—</strong><span>Identités distinctes affichées</span></div></div><p id="audit" class="small muted"></p>
+<div class="stats"><div class="stat"><strong id="nPosts">—</strong><span>Postes</span></div><div class="stat"><strong id="nAssignments">—</strong><span>Affectations reçues</span></div><div class="stat"><strong id="nVolunteers">—</strong><span>Identités distinctes affichées</span></div></div><p id="audit" class="small muted"></p><section><details><summary>Diagnostic des identités masquées (sans noms complets)</summary><p class="small muted">Affiche uniquement le poste, le sous-poste, la catégorie du problème et un numéro de ligne dans la réponse. Aucun nom complet n’est transmis à ce diagnostic.</p><div id="diagnostic" class="small muted">Actualisez les données pour afficher le diagnostic.</div></details></section>
 <section><h2>Rechercher une affectation</h2><div class="bar"><input id="search" type="search" placeholder="Prénom, initiale, sous-poste, horaire…" aria-label="Rechercher"><select id="filter" aria-label="Filtrer par poste"><option value="">Tous les postes</option></select><button id="clear" type="button">Effacer</button></div><p id="matches" class="small muted"></p></section>
 <section><h2>Postes et affectations</h2><div id="cards" class="grid"><div class="empty">Chargement en cours…</div></div></section>
 <p class="small muted">Les affectations indiquent des prévisions d'organisation et ne constituent pas un pointage de présence. Les identités sont affichées au format prénom + initiale du nom.</p>
@@ -54,11 +54,17 @@ for(const a of rows){const line=node('div',undefined,'assignment');line.append(n
 if(!shown)cards.append(node('div',posts.length?'Aucun résultat.':'Aucune donnée disponible.','empty'));
 el('matches').textContent=shown+' poste(s) et '+count+' affectation(s) correspondant aux filtres.';
 }
+function diagnosis(value){const s=str(value).replace(/\s+/g,' ');if(!s)return 'Identité vide';if(!/\s/.test(s))return 'Un seul élément';if(!/\.$/.test(s))return 'Initiale sans point final ou format inattendu';if(!/\s+[A-Za-zÀ-ÿ]\.$/u.test(s))return 'Initiale finale non reconnue';return 'Format non reconnu'}
 function accept(data){
 if(!data||!Array.isArray(data.posts)||!Array.isArray(data.assignments))throw Error('Structure de données inattendue');
 posts=data.posts.map(p=>({id:str(p.id),name:str(p.name),responsible:safeName(p.responsible)})).filter(p=>p.id&&p.name);
 assignments=data.assignments.map(a=>({postId:str(a.postId),volunteer:safeName(a.volunteer),subpost:str(a.subpost),schedule:str(a.schedule)}));
-hiddenCount=assignments.filter(a=>!a.volunteer).length;unmatchedCount=assignments.filter(a=>!posts.some(p=>p.id===a.postId)).length;
+hiddenCount=assignments.filter(a=>!a.volunteer).length;
+const diagnostic=el('diagnostic');diagnostic.replaceChildren();
+const hidden=assignments.map((a,i)=>({a,i})).filter(x=>!x.a.volunteer);
+if(!hidden.length)diagnostic.append(node('p','Aucune identité masquée.'));
+else {const list=node('ol');for(const {a,i} of hidden){const post=posts.find(p=>p.id===a.postId);const original=data.assignments[i];const li=node('li','Affectation '+(i+1)+' · '+(post?post.name:'Poste inconnu')+' · '+(a.subpost||'Sans sous-poste')+' · '+diagnosis(original&&original.volunteer));list.append(li)}diagnostic.append(list)}
+unmatchedCount=assignments.filter(a=>!posts.some(p=>p.id===a.postId)).length;
 const f=el('filter'),previous=f.value;f.replaceChildren(new Option('Tous les postes',''));
 posts.forEach(p=>f.add(new Option(p.name,p.id)));if(posts.some(p=>p.id===previous))f.value=previous;
 el('nPosts').textContent=posts.length;el('nAssignments').textContent=assignments.length;el('nVolunteers').textContent=new Set(assignments.filter(a=>a.volunteer).map(a=>a.volunteer)).size;
