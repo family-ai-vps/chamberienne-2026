@@ -1,50 +1,104 @@
 /**
- * Prototype Apps Script privé : API lecture seule.
- * À déployer uniquement sur une COPIE TEST du tableur.
- * Ne pas activer un accès public à des données personnelles.
- * Script Properties: GOOGLE_CLIENT_ID, SOURCE_SHEET_ID, ALLOWED_EMAILS
+ * La Chambérienne 2026 — API prototype lecture seule.
+ * Source: classeur TEST de refonte, onglets Responsables 2026 + postes.
+ * Le mode PUBLIC_TEST ne renvoie que prénom + initiale du nom.
+ * IMPORTANT : une initiale ne garantit pas l'anonymat ; tester avec des personnes
+ * autorisées et ne jamais transmettre e-mail, téléphone ou notes privées.
+ *
+ * Script Properties:
+ * SOURCE_SHEET_ID = 1BdqBxZEfNFArV4CQ4a4aWUjYVHTPLCjML1_5fNNxdX0
+ * PUBLIC_TEST = false (défaut) ; mettre true uniquement pour un test autorisé.
+ * GOOGLE_CLIENT_ID et ALLOWED_EMAILS pour les accès authentifiés.
  */
+const REF_TAB = 'Responsables 2026';
+const RESERVED_TABS = new Set([
+ 'Responsables 2026',"00 - Mode d'emploi",'Bénévoles','Postes et critères',
+ 'Affectations','Matériel par sous-poste','Réserve','Réglages',
+ 'Tableau de bord','Données Forms','Historique affectations',
+ 'Référentiel postes 2026','_Disponibilités','_Contacts',
+ '_Sources contrôle','_Bénévoles contrôle','_Contrôles horaires','_Listes par mission'
+]);
+
+function doGet(e) { return handle_({action:(e && e.parameter && e.parameter.action) || 'health'}); }
 function doPost(e) {
+  let req = {};
+  try { req = JSON.parse(e.postData.contents); }
+  catch (err) { return json_({ok:false,error:'Requête JSON invalide'}); }
+  return handle_(req);
+}
+function handle_(req) {
   try {
-    const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    const user = authenticate_(req.idToken);
-    if (req.action !== 'posts.list') throw new Error('Action non autorisée');
-    return json_({ok:true, data:posts_(), user:{email:user.email}});
+    if (req.action === 'health') return json_({ok:true,service:'chamberienne-test',version:1});
+    const publicTest = PropertiesService.getScriptProperties().getProperty('PUBLIC_TEST') === 'true';
+    if (!publicTest) authenticate_(req.idToken);
+    if (req.action !== 'snapshot') throw new Error('Action inconnue');
+    return json_({ok:true,mode:publicTest?'public-test':'authenticated',data:snapshot_()});
   } catch (err) {
-    return json_({ok:false, error:'Accès refusé ou requête invalide'});
+    console.error('API request rejected: ' + String(err.message).slice(0,120));
+    return json_({ok:false,error:'Accès refusé ou source indisponible'});
   }
 }
-function authenticate_(idToken) {
-  if (typeof idToken !== 'string' || !idToken) throw new Error('Token manquant');
-  const clientId = PropertiesService.getScriptProperties().getProperty('GOOGLE_CLIENT_ID');
-  const allowed = (PropertiesService.getScriptProperties().getProperty('ALLOWED_EMAILS') || '')
-    .split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-  if (!clientId || !allowed.length) throw new Error('Configuration incomplète');
-  const url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken);
-  const response = UrlFetchApp.fetch(url,{muteHttpExceptions:true});
-  if (response.getResponseCode() !== 200) throw new Error('Token invalide');
-  const claims = JSON.parse(response.getContentText());
-  if (claims.aud !== clientId || !['accounts.google.com','https://accounts.google.com'].includes(claims.iss)
-      || Number(claims.exp) <= Date.now()/1000 || claims.email_verified !== 'true')
-    throw new Error('Identité invalide');
-  if (!allowed.includes(String(claims.email).toLowerCase())) throw new Error('Utilisateur non autorisé');
-  return {email:claims.email,sub:claims.sub};
-}
-function posts_() {
-  const id = PropertiesService.getScriptProperties().getProperty('SOURCE_SHEET_ID');
-  if (!id) throw new Error('Source non configurée');
-  const sheet = SpreadsheetApp.openById(id).getSheetByName('05 - Responsables');
-  if (!sheet) throw new Error('Onglet absent');
-  const values = sheet.getDataRange().getDisplayValues().slice(1);
-  return values.filter(row=>row[0]).map(row=>({
-    id: stableKey_(row[0]), name:row[0], leaderName:row[1]||'', leaderStatus:row[2]||''
+function snapshot_() {
+  const id=PropertiesService.getScriptProperties().getProperty('SOURCE_SHEET_ID');
+  if (!id) throw new Error('SOURCE_SHEET_ID manquant');
+  const ss=SpreadsheetApp.openById(id);
+  const ref=ss.getSheetByName(REF_TAB);
+  if (!ref) throw new Error('Onglet responsables absent');
+  const rows=ref.getDataRange().getDisplayValues();
+  const posts=rows.slice(4).filter(r=>r[0] && r[1]).map(r=>({
+    id:key_(r[0]),name:r[0],responsible:shortName_(r[1])
   }));
+  const assignments=[];
+  ss.getSheets().filter(s=>!RESERVED_TABS.has(s.getName())).forEach(sheet=>{
+    const v=sheet.getDataRange().getDisplayValues();
+    // Format actuel : 3 lignes d'en-tête ; colonnes B=Nom, E=Horaires, F=Sous-poste.
+    if (v.length<5 || v[3][1]!=='NOM Prénom') return;
+    v.slice(4).forEach((r,i)=>{
+      const full=String(r[1]||'').trim();
+      if (!full) return;
+      assignments.push({
+        id:key_(sheet.getName())+'-'+(i+5),
+        postId:key_(sheet.getName()),
+        volunteer:shortName_(full),
+        schedule:String(r[4]||''),
+        subpost:String(r[5]||'')
+      });
+    });
+  });
+  return {generatedAt:new Date().toISOString(),posts,assignments};
 }
-function stableKey_(value) {
-  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+function shortName_(raw) {
+  const words=String(raw||'').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return '';
+  if (words.length===1) return words[0].slice(0,1).toUpperCase()+'.';
+  // Les onglets d'affectation utilisent « NOM Prénom » ; le référentiel
+  // responsables utilise « Prénom NOM » : identifier via la casse.
+  const firstUpper=words[0]===words[0].toUpperCase() && words[0].length>1;
+  const lastUpper=words[words.length-1]===words[words.length-1].toUpperCase();
+  if (firstUpper) return words.slice(1).join(' ')+' '+words[0].slice(0,1).toUpperCase()+'.';
+  if (lastUpper) return words.slice(0,-1).join(' ')+' '+words[words.length-1].slice(0,1).toUpperCase()+'.';
+  // Ambiguïté : masquer plutôt que risquer de divulguer le nom complet.
+  return words[0]+' '+words[words.length-1].slice(0,1).toUpperCase()+'.';
+}
+function key_(s) {
+  return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .toUpperCase().replace(/[^A-Z0-9]+/g,'-').replace(/^-|-$/g,'');
 }
-function json_(data) {
-  return ContentService.createTextOutput(JSON.stringify(data))
+function authenticate_(idToken) {
+  if (!idToken) throw new Error('Jeton absent');
+  const props=PropertiesService.getScriptProperties();
+  const clientId=props.getProperty('GOOGLE_CLIENT_ID');
+  const allowed=(props.getProperty('ALLOWED_EMAILS')||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if (!clientId || !allowed.length) throw new Error('Configuration manquante');
+  const res=UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token='+encodeURIComponent(idToken),{muteHttpExceptions:true});
+  if (res.getResponseCode()!==200) throw new Error('Jeton invalide');
+  const c=JSON.parse(res.getContentText());
+  if (c.aud!==clientId || !['accounts.google.com','https://accounts.google.com'].includes(c.iss)
+      || Number(c.exp)<=Date.now()/1000 || !(c.email_verified===true || c.email_verified==='true')
+      || !allowed.includes(String(c.email||'').toLowerCase())) throw new Error('Non autorisé');
+  return {sub:c.sub};
+}
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
