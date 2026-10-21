@@ -24,7 +24,7 @@ input{flex:2 1 210px}select{flex:1 1 180px}
 <main>
 <div class="bar"><button id="refresh" type="button">↻ Actualiser les données</button><span id="updated" class="small muted"></span></div>
 <div id="status" role="status">Chargement des données depuis Google Sheets…</div>
-<div class="stats"><div class="stat"><strong id="nPosts">—</strong><span>Postes</span></div><div class="stat"><strong id="nAssignments">—</strong><span>Affectations prévues</span></div><div class="stat"><strong id="nVolunteers">—</strong><span>Identités distinctes affichées</span></div></div>
+<div class="stats"><div class="stat"><strong id="nPosts">—</strong><span>Postes</span></div><div class="stat"><strong id="nAssignments">—</strong><span>Affectations reçues</span></div><div class="stat"><strong id="nVolunteers">—</strong><span>Identités distinctes affichées</span></div></div><p id="audit" class="small muted"></p>
 <section><h2>Rechercher une affectation</h2><div class="bar"><input id="search" type="search" placeholder="Prénom, initiale, sous-poste, horaire…" aria-label="Rechercher"><select id="filter" aria-label="Filtrer par poste"><option value="">Tous les postes</option></select><button id="clear" type="button">Effacer</button></div><p id="matches" class="small muted"></p></section>
 <section><h2>Postes et affectations</h2><div id="cards" class="grid"><div class="empty">Chargement en cours…</div></div></section>
 <p class="small muted">Les affectations indiquent des prévisions d'organisation et ne constituent pas un pointage de présence. Les identités sont affichées au format prénom + initiale du nom.</p>
@@ -33,9 +33,9 @@ input{flex:2 1 210px}select{flex:1 1 180px}
 (function(){
 'use strict';
 const el=id=>document.getElementById(id);
-let posts=[],assignments=[];
+let posts=[],assignments=[],hiddenCount=0,unmatchedCount=0;
 const str=v=>String(v==null?'':v).trim();
-const safeName=v=>{const s=str(v).replace(/\s+/g,' ');return /^.+\s+[A-Za-zÀ-ÿ]\.$/u.test(s)?s:''};
+const safeName=v=>{const s=str(v).replace(/\s+/g,' ');return /^[^\s]+(?:\s+[^\s]+)*\s+[A-Za-zÀ-ÿ]\.$/u.test(s)?s:''};
 function node(tag,txt,cls){const x=document.createElement(tag);if(txt!==undefined)x.textContent=txt;if(cls)x.className=cls;return x}
 function setStatus(message,cls){el('status').textContent=message;el('status').className=cls||''}
 function render(){
@@ -49,7 +49,7 @@ shown++;count+=rows.length;
 const card=node('article',undefined,'card');card.append(node('h3',p.name));
 card.append(node('div','Responsable : '+(p.responsible||'Non renseigné'),'meta'));
 card.append(node('div',rows.length+' affectation(s) affichée(s)','meta'));
-for(const a of rows){const line=node('div',undefined,'assignment');line.append(node('b',a.volunteer));line.append(node('span',[a.subpost,a.schedule].filter(Boolean).join(' · ')));card.append(line)}cards.append(card);
+for(const a of rows){const line=node('div',undefined,'assignment');line.append(node('b',a.volunteer||'Identité masquée'));line.append(node('span',[a.subpost,a.schedule].filter(Boolean).join(' · ')));card.append(line)}cards.append(card);
 }
 if(!shown)cards.append(node('div',posts.length?'Aucun résultat.':'Aucune donnée disponible.','empty'));
 el('matches').textContent=shown+' poste(s) et '+count+' affectation(s) correspondant aux filtres.';
@@ -57,12 +57,14 @@ el('matches').textContent=shown+' poste(s) et '+count+' affectation(s) correspon
 function accept(data){
 if(!data||!Array.isArray(data.posts)||!Array.isArray(data.assignments))throw Error('Structure de données inattendue');
 posts=data.posts.map(p=>({id:str(p.id),name:str(p.name),responsible:safeName(p.responsible)})).filter(p=>p.id&&p.name);
-assignments=data.assignments.map(a=>({postId:str(a.postId),volunteer:safeName(a.volunteer),subpost:str(a.subpost),schedule:str(a.schedule)})).filter(a=>a.volunteer);
+assignments=data.assignments.map(a=>({postId:str(a.postId),volunteer:safeName(a.volunteer),subpost:str(a.subpost),schedule:str(a.schedule)}));
+hiddenCount=assignments.filter(a=>!a.volunteer).length;unmatchedCount=assignments.filter(a=>!posts.some(p=>p.id===a.postId)).length;
 const f=el('filter'),previous=f.value;f.replaceChildren(new Option('Tous les postes',''));
 posts.forEach(p=>f.add(new Option(p.name,p.id)));if(posts.some(p=>p.id===previous))f.value=previous;
-el('nPosts').textContent=posts.length;el('nAssignments').textContent=assignments.length;el('nVolunteers').textContent=new Set(assignments.map(a=>a.volunteer)).size;
+el('nPosts').textContent=posts.length;el('nAssignments').textContent=assignments.length;el('nVolunteers').textContent=new Set(assignments.filter(a=>a.volunteer).map(a=>a.volunteer)).size;
+el('audit').textContent='Contrôle : '+assignments.length+' affectations reçues, '+hiddenCount+' identité(s) non affichable(s), '+unmatchedCount+' affectation(s) sans poste correspondant. Les affectations non affichables restent comptées.';
 el('updated').textContent='Dernière lecture : '+new Date(data.generatedAt||Date.now()).toLocaleString('fr-FR');
-setStatus('Données Google Sheets actualisées. Consultation en lecture seule.','ok');render();
+setStatus('Données Google Sheets actualisées. Consultation en lecture seule.'+(hiddenCount||unmatchedCount?' Vérifier le détail du contrôle de comptage ci-dessous.':''),'ok');render();
 }
 function refresh(){
 el('refresh').disabled=true;setStatus('Lecture du Google Sheets en cours…');
