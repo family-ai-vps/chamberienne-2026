@@ -1,14 +1,76 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Chambérienne — test connecteur</title><style>body{font:16px system-ui;background:#121212;color:#f8f8f8;margin:20px}h1{font-size:23px}button{font-size:17px;padding:13px;border:0;border-radius:8px;background:#f2dc03;color:#111;font-weight:bold}section{background:#252525;padding:14px;border-radius:10px;margin:14px 0}small{color:#ccc}li{margin:9px 0}</style></head><body><h1>La Chambérienne 2026</h1><p>TEST — Lecture Google Sheets (prénom + initiale seulement)</p><button onclick="refresh()">Actualiser les données</button><p id="state">Prêt à tester</p><section id="stats"></section><section><h2>Postes</h2><ul id="posts"></ul></section><section><h2>Affectations abrégées</h2><ul id="assignments"></ul></section><script>
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>La Chambérienne 2026 — TEST bénévoles</title>
+<style>
+:root{font:16px system-ui,-apple-system,sans-serif;color:#152b3c;background:#f1f5f8}*{box-sizing:border-box}body{margin:0}
+header{background:#132f43;color:#fff;padding:18px max(16px,calc((100vw - 1100px)/2))}
+header h1{font-size:1.45rem;margin:8px 0 3px}header p{margin:0;color:#cbdce5;font-size:.9rem}
+.tag{display:inline-block;background:#ffdc38;color:#182c39;font-size:.7rem;font-weight:800;padding:4px 8px;border-radius:5px}
+main{max-width:1100px;margin:auto;padding:16px}section{background:white;border:1px solid #dbe4eb;border-radius:12px;padding:16px;margin:12px 0}
+h2{font-size:1.06rem;margin:0 0 12px}.muted{color:#627687}.small{font-size:.84rem}.bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+button,input,select{font:inherit;border-radius:8px;padding:10px;border:1px solid #b9cbd6;min-width:0}
+button{background:#155a7f;color:#fff;border-color:#155a7f;font-weight:650;cursor:pointer}button:disabled{opacity:.6}
+input{flex:2 1 210px}select{flex:1 1 180px}
+#status{padding:12px;border-left:4px solid #bc8a22;background:#fff9e9;border-radius:5px;margin:12px 0}
+#status.ok{background:#ebf7f0;border-left-color:#248058}#status.error{background:#fff0f0;border-left-color:#b64040}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.stat{background:white;border:1px solid #dbe4eb;border-radius:12px;padding:13px}.stat strong{font-size:1.7rem;display:block}.stat span{font-size:.8rem;color:#637687}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:10px}.card{border:1px solid #dce5eb;border-radius:10px;padding:13px}
+.card h3{font-size:1rem;margin:0 0 6px}.meta{color:#657788;font-size:.82rem}.assignment{border-top:1px solid #e9eff2;padding:9px 0;font-size:.9rem}
+.assignment b{display:block}.assignment span{display:block;color:#536b7d;margin-top:3px}
+.empty{text-align:center;padding:20px;color:#637687}footer{text-align:center;color:#6a7e8b;font-size:.78rem;padding:12px}
+@media(max-width:550px){main{padding:10px}.stats{gap:6px}.stat{padding:10px}.stat strong{font-size:1.3rem}section{padding:12px}}
+</style></head><body>
+<header><span class="tag">ENVIRONNEMENT TEST</span><h1>La Chambérienne 2026</h1><p>Gestion des bénévoles · Chambéry Triathlon</p></header>
+<main>
+<div class="bar"><button id="refresh" type="button">↻ Actualiser les données</button><span id="updated" class="small muted"></span></div>
+<div id="status" role="status">Chargement des données depuis Google Sheets…</div>
+<div class="stats"><div class="stat"><strong id="nPosts">—</strong><span>Postes</span></div><div class="stat"><strong id="nAssignments">—</strong><span>Affectations prévues</span></div><div class="stat"><strong id="nVolunteers">—</strong><span>Identités distinctes affichées</span></div></div>
+<section><h2>Rechercher une affectation</h2><div class="bar"><input id="search" type="search" placeholder="Prénom, initiale, sous-poste, horaire…" aria-label="Rechercher"><select id="filter" aria-label="Filtrer par poste"><option value="">Tous les postes</option></select><button id="clear" type="button">Effacer</button></div><p id="matches" class="small muted"></p></section>
+<section><h2>Postes et affectations</h2><div id="cards" class="grid"><div class="empty">Chargement en cours…</div></div></section>
+<p class="small muted">Les affectations indiquent des prévisions d'organisation et ne constituent pas un pointage de présence. Les identités sont affichées au format prénom + initiale du nom.</p>
+</main><footer>Chambéry Triathlon · Connecteur TEST · Lecture seule</footer>
+<script>
+(function(){
+'use strict';
 const el=id=>document.getElementById(id);
-function safe(t){return String(t||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function refresh(){
- el('state').textContent='⏳ Lecture en cours…';
- google.script.run.withSuccessHandler(data=>{
-   el('state').textContent='🟢 Données reçues : '+new Date(data.generatedAt).toLocaleString('fr-FR');
-   el('stats').textContent=data.posts.length+' postes — '+data.assignments.length+' affectations renseignées';
-   el('posts').innerHTML=data.posts.map(p=>'<li>'+safe(p.name)+' — '+safe(p.responsible)+'</li>').join('');
-   el('assignments').innerHTML=data.assignments.map(a=>'<li>'+safe(a.volunteer)+' — '+safe(a.postId)+' / '+safe(a.subpost)+' — <small>'+safe(a.schedule)+'</small></li>').join('');
- }).withFailureHandler(err=>{el('state').textContent='🔴 Échec : '+String(err.message||err);}).testSnapshot();
+let posts=[],assignments=[];
+const str=v=>String(v==null?'':v).trim();
+const safeName=v=>{const s=str(v).replace(/\s+/g,' ');return /^.+\s+[A-Za-zÀ-ÿ]\.$/u.test(s)?s:''};
+function node(tag,txt,cls){const x=document.createElement(tag);if(txt!==undefined)x.textContent=txt;if(cls)x.className=cls;return x}
+function setStatus(message,cls){el('status').textContent=message;el('status').className=cls||''}
+function render(){
+const query=el('search').value.trim().toLocaleLowerCase('fr'),filter=el('filter').value;
+const cards=el('cards');cards.replaceChildren();let count=0,shown=0;
+for(const p of posts){
+if(filter&&p.id!==filter)continue;
+const rows=assignments.filter(a=>a.postId===p.id&&(!query||[p.name,p.responsible,a.volunteer,a.subpost,a.schedule].join(' ').toLocaleLowerCase('fr').includes(query)));
+if(query&&!rows.length&&![p.name,p.responsible].join(' ').toLocaleLowerCase('fr').includes(query))continue;
+shown++;count+=rows.length;
+const card=node('article',undefined,'card');card.append(node('h3',p.name));
+card.append(node('div','Responsable : '+(p.responsible||'Non renseigné'),'meta'));
+card.append(node('div',rows.length+' affectation(s) affichée(s)','meta'));
+for(const a of rows){const line=node('div',undefined,'assignment');line.append(node('b',a.volunteer));line.append(node('span',[a.subpost,a.schedule].filter(Boolean).join(' · ')));card.append(line)}cards.append(card);
 }
+if(!shown)cards.append(node('div',posts.length?'Aucun résultat.':'Aucune donnée disponible.','empty'));
+el('matches').textContent=shown+' poste(s) et '+count+' affectation(s) correspondant aux filtres.';
+}
+function accept(data){
+if(!data||!Array.isArray(data.posts)||!Array.isArray(data.assignments))throw Error('Structure de données inattendue');
+posts=data.posts.map(p=>({id:str(p.id),name:str(p.name),responsible:safeName(p.responsible)})).filter(p=>p.id&&p.name);
+assignments=data.assignments.map(a=>({postId:str(a.postId),volunteer:safeName(a.volunteer),subpost:str(a.subpost),schedule:str(a.schedule)})).filter(a=>a.volunteer);
+const f=el('filter'),previous=f.value;f.replaceChildren(new Option('Tous les postes',''));
+posts.forEach(p=>f.add(new Option(p.name,p.id)));if(posts.some(p=>p.id===previous))f.value=previous;
+el('nPosts').textContent=posts.length;el('nAssignments').textContent=assignments.length;el('nVolunteers').textContent=new Set(assignments.map(a=>a.volunteer)).size;
+el('updated').textContent='Dernière lecture : '+new Date(data.generatedAt||Date.now()).toLocaleString('fr-FR');
+setStatus('Données Google Sheets actualisées. Consultation en lecture seule.','ok');render();
+}
+function refresh(){
+el('refresh').disabled=true;setStatus('Lecture du Google Sheets en cours…');
+google.script.run.withSuccessHandler(data=>{try{accept(data)}catch(e){setStatus('Erreur de données : '+e.message,'error')}finally{el('refresh').disabled=false}})
+.withFailureHandler(e=>{setStatus('Échec de lecture : '+str(e&&e.message||e),'error');el('refresh').disabled=false}).testSnapshot();
+}
+el('refresh').addEventListener('click',refresh);el('search').addEventListener('input',render);el('filter').addEventListener('change',render);
+el('clear').addEventListener('click',()=>{el('search').value='';el('filter').value='';render()});
 refresh();
+})();
 </script></body></html>
