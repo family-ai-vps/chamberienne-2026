@@ -35,7 +35,7 @@ input{flex:2 1 210px}select{flex:1 1 180px}
 const el=id=>document.getElementById(id);
 let posts=[],assignments=[],hiddenCount=0,unmatchedCount=0;
 const str=v=>String(v==null?'':v).trim();
-const safeName=v=>{const s=str(v).replace(/\s+/g,' ');return /^[^\s]+(?:\s+[^\s]+)*\s+[A-Za-zÀ-ÿ]\.$/u.test(s)?s:''};
+const safeName=v=>{const s=str(v).replace(/\s+/g,' ');if(/^Cyclo Bissy (?:10|[1-9])$/i.test(s))return 'Cyclo Bissy '+s.match(/\d+$/)[0];return /^[^\s]+(?:\s+[^\s]+)*\s+[A-Za-zÀ-ÿ]\.$/u.test(s)?s:''};
 function node(tag,txt,cls){const x=document.createElement(tag);if(txt!==undefined)x.textContent=txt;if(cls)x.className=cls;return x}
 function setStatus(message,cls){el('status').textContent=message;el('status').className=cls||''}
 function render(){
