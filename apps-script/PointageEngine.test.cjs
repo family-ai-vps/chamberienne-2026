@@ -1,0 +1,25 @@
+// Tests indépendants de Google Apps Script. Exécuter avec Node.js.
+const assert=require('node:assert/strict');
+const vm=require('node:vm');const fs=require('node:fs');
+const ctx=vm.createContext({});
+vm.runInContext(fs.readFileSync(__dirname+'/PointageEngine.gs','utf8'),ctx);
+const run=(expr)=>vm.runInContext(expr,ctx);
+const ids=[{id:'a',postId:'D',subpost:'D8',volunteer:'Vincent M.'},{id:'b',postId:'D',subpost:'D8',volunteer:'Vincent M.'},{id:'c',postId:'D',subpost:'D9',volunteer:'Cyclo Bissy 1'}];
+ctx.data=ids;
+assert.equal(run('validateAssignmentIds_(data).ok'),true);
+assert.equal(run('validateAssignmentIds_([...data,data[0]]).ok'),false);
+assert.equal(run("validateAssignmentIds_([{postId:'D'}]).ok"),false);
+ctx.journal=[];
+assert.equal(run('readPresenceJournal_(data,journal).ready'),true);
+assert.equal(run("readPresenceJournal_(data,journal).state.size"),3);
+assert.equal(run("countPresenceBySubpost_(data,readPresenceJournal_(data,journal).state)['D / D8'].planned"),2);
+ctx.next=run("proposePresenceChange_('a','PRESENT','operator1',0,readPresenceJournal_(data,journal).state,'2026-10-22T08:00:00Z')");
+ctx.journal=[ctx.next];
+assert.equal(run("readPresenceJournal_(data,journal).state.get('a').status"),'PRESENT');
+assert.equal(run("countPresenceBySubpost_(data,readPresenceJournal_(data,journal).state)['D / D8'].present"),1);
+assert.throws(()=>run("proposePresenceChange_('a','ANNULER','operator1',0,readPresenceJournal_(data,journal).state,'2026-10-22T08:01:00Z')"),/Conflit/);
+ctx.journal.push({assignmentId:'a',action:'ANNULER',operator:'operator2',version:2,at:'2026-10-22T08:02:00Z'});
+assert.equal(run("readPresenceJournal_(data,journal).state.get('a').status"),'NON_POINTE');
+ctx.journal.push({assignmentId:'nope',action:'PRESENT',operator:'operator2',version:1,at:'2026-10-22T08:03:00Z'});
+assert.equal(run('readPresenceJournal_(data,journal).ready'),false);
+console.log('PointageEngine : 10 contrôles réussis');
