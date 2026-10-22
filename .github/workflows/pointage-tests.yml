@@ -1,0 +1,31 @@
+name: Chambérienne — Tests du moteur de pointage
+on:
+  push:
+    branches:
+      - dev/sheets-sync-auth-2026
+    paths:
+      - 'apps-script/PointageEngine.gs'
+      - 'apps-script/PointageEngine.test.cjs'
+      - '.github/workflows/pointage-tests.yml'
+  pull_request:
+    paths:
+      - 'apps-script/PointageEngine.gs'
+      - 'apps-script/PointageEngine.test.cjs'
+      - '.github/workflows/pointage-tests.yml'
+permissions:
+  contents: read
+jobs:
+  pointage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validation syntaxique du moteur
+        run: node --check apps-script/PointageEngine.gs
+      - name: Validation syntaxique des tests
+        run: node --check apps-script/PointageEngine.test.cjs
+      - name: Tests de non-régression du pointage
+        run: node apps-script/PointageEngine.test.cjs
