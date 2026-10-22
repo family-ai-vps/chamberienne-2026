@@ -12,6 +12,8 @@
  */
 const STAGING_ID_HEADER_='ID affectation';
 const STAGING_JOURNAL_='Pointages 2026';
+const STAGING_EXPECTED_POSTS_=20;
+const STAGING_RESERVED_EXTRA_=new Set(['Suivi souhaits 2026','Responsables 2026']);
 const STAGING_JOURNAL_HEADERS_=['Horodatage UTC','ID affectation','Action','Identifiant opérateur','Version'];
 function stagingConfig_(){
   const p=PropertiesService.getScriptProperties();
@@ -23,6 +25,7 @@ function stagingConfig_(){
 function stagingAssignmentTabs_(ss){
   const reserved=new Set(typeof RESERVED_TABS!=='undefined'?[...RESERVED_TABS]:[]);
   reserved.add(STAGING_JOURNAL_);
+  STAGING_RESERVED_EXTRA_.forEach(n=>reserved.add(n));
   return ss.getSheets().filter(sh=>{
     if(reserved.has(sh.getName()))return false;
     const v=sh.getRange(1,1,Math.min(4,sh.getLastRow()),Math.max(2,sh.getLastColumn())).getDisplayValues();
@@ -56,6 +59,7 @@ function prepareStagingIdsAndJournal(){
   if(!lock.tryLock(30000))throw new Error('Copie occupée');
   try{
     const audit=auditStaging();
+    if(audit.postes!==STAGING_EXPECTED_POSTS_)throw new Error('Nombre de postes inattendu : '+audit.postes);
     if(audit.doublons.length)throw new Error('Doublons ID détectés : intervention requise');
     const tabs=stagingAssignmentTabs_(ss);
     for(const sh of tabs){
