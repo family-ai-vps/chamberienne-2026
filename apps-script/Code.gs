@@ -16,7 +16,8 @@ const RESERVED_TABS = new Set([
  'Affectations','Matériel par sous-poste','Réserve','Réglages',
  'Tableau de bord','Données Forms','Historique affectations',
  'Référentiel postes 2026','_Disponibilités','_Contacts',
- '_Sources contrôle','_Bénévoles contrôle','_Contrôles horaires','_Listes par mission'
+ '_Sources contrôle','_Bénévoles contrôle','_Contrôles horaires','_Listes par mission',
+ 'Pointages 2026','_Charge missions','_Bilan charge','Suivi souhaits 2026'
 ]);
 
 function doGet(e) {
@@ -64,31 +65,22 @@ function snapshot_() {
     if (v.length<5 || v[3][1]!=='NOM Prénom') return;
     v.slice(4).forEach((r,i)=>{
       const full=String(r[1]||'').trim();
-      if (!full) return;
+      if (!full || full.toLocaleUpperCase('fr')==='NOM PRÉNOM') return;
+      const subpost=String(r[5]||'').trim();
+      const bissy=/^(?:Bénévole|Cyclo) Bissy (10|[1-9])$/i.exec(full);
+      const isBissy=sheet.getName()==='Secteur D - Parcours' &&
+        /^D(?:8|9|10|11)$/.test(subpost) && bissy;
       assignments.push({
         id:key_(sheet.getName())+'-'+(i+5),
         postId:key_(sheet.getName()),
-        volunteer:/^Cyclo Bissy (?:10|[1-9])$/i.test(full) ? full.replace(/^cyclo bissy /i,'Cyclo Bissy ') : shortName_(full),
-        bissyPlaceholder:/\b(?:cyclo|bissy)\b/i.test(full),
+        volunteer:isBissy ? 'Cyclo Bissy '+bissy[1] : shortName_(full),
         schedule:String(r[4]||''),
-        subpost:String(r[5]||'')
+        subpost
       });
     });
   });
-  // Cyclo Bissy : dix emplacements fixes dans le secteur D, sous-postes D8 à D11.
-  // Ne pas modifier les noms des autres bénévoles ni les affectations source.
-  // Remplacer uniquement les identités non affichables sur ces emplacements.
-  const bissyRows=assignments.filter(a=>
-    a.postId===key_('Secteur D - Parcours') &&
-    /^D(?:8|9|10|11)(?![0-9])(?:\\b|\\s|\\.|$)/i.test(a.subpost) &&
-    !/^[^\\s]+(?:\\s+[^\\s]+)*\\s+[A-Za-zÀ-ÿ]\\.$/u.test(a.volunteer)
-  );
-  if (bissyRows.length===10) {
-    bissyRows.forEach((a,i)=>{a.volunteer='Cyclo Bissy '+(i+1);});
-  } else if (bissyRows.length) {
-    console.warn('Cyclo Bissy : '+bissyRows.length+' emplacements non reconnus (10 attendus), aucune renumérotation automatique');
-  }
-  assignments.forEach(a=>{delete a.bissyPlaceholder;});
+  // Les postes supplémentaires Secours, Stand Club et PC bénévoles
+  // sont découverts automatiquement parmi les onglets de postes.
   return {generatedAt:new Date().toISOString(),posts,assignments};
 }
 function shortName_(raw) {
